@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>French Learning App</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      background: #f5f0ff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      height: 100vh;
+      padding: 10px;
+    }
+    h1 {
+      color: #4a148c;
+    }
+    canvas {
+      border: 3px solid #4a148c;
+      background: #fff;
+      margin-top: 10px;
+    }
+    #progress {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #311b92;
+    }
+    .tabs {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      background: #673ab7;
+      color: white;
+      cursor: pointer;
+    }
+    button.active {
+      background: #311b92;
+    }
+    .tab-content {
+      display: none;
+      margin-top: 20px;
+      width: 100%;
+      max-width: 500px;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .flashcard {
+      background: white;
+      border: 2px solid #673ab7;
+      border-radius: 10px;
+      padding: 30px;
+      text-align: center;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .quiz-question {
+      font-weight: bold;
+    }
+    .quiz-option {
+      display: block;
+      margin: 5px 0;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>French Learning App</h1>
+  
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="game">Game</button>
+    <button class="tab-btn" data-tab="flashcards">Flashcards</button>
+    <button class="tab-btn" data-tab="quiz">Quiz</button>
+  </div>
+
+  <!-- Game Tab -->
+  <div id="game" class="tab-content active">
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div id="progress">Cheese eaten: 0</div>
+  </div>
+
+  <!-- Flashcards Tab -->
+  <div id="flashcards" class="tab-content">
+    <div id="flashcard" class="flashcard">Click to flip</div>
+  </div>
+
+  <!-- Quiz Tab -->
+  <div id="quiz" class="tab-content">
+    <div class="quiz-question" id="quiz-question"></div>
+    <div id="quiz-options"></div>
+    <div id="quiz-feedback"></div>
+  </div>
+
+  <script>
+    // Shared word list
+    const frenchWords = [
+      {fr: "bonjour", en: "hello"},
+      {fr: "fromage", en: "cheese"},
+      {fr: "maison", en: "house"},
+      {fr: "chat", en: "cat"},
+      {fr: "chien", en: "dog"},
+      {fr: "merci", en: "thank you"},
+      {fr: "pomme", en: "apple"},
+      {fr: "livre", en: "book"},
+      {fr: "école", en: "school"}
+    ];
+
+    // Tabs switching
+    const tabs = document.querySelectorAll(".tab-btn");
+    const contents = document.querySelectorAll(".tab-content");
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        tabs.forEach(t => t.classList.remove("active"));
+        contents.forEach(c => c.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById(tab.dataset.tab).classList.add("active");
+      });
+    });
+
+    // Game Logic
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const gridSize = 20;
+    let mouse = [{x: 9, y: 9}];
+    let cheese = {x: 5, y: 5};
+    let dx = 0;
+    let dy = 0;
+    let cheeseEaten = 0;
+
+    function playWord() {
+      const word = frenchWords[Math.floor(Math.random() * frenchWords.length)].fr;
+      const utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = 'fr-FR';
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#3f51b5";
+      mouse.forEach(part => ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize, gridSize));
+      ctx.fillStyle = "#ffeb3b";
+      ctx.fillRect(cheese.x * gridSize, cheese.y * gridSize, gridSize, gridSize);
+    }
+
+    function update() {
+      const head = {x: mouse[0].x + dx, y: mouse[0].y + dy};
+      mouse.unshift(head);
+
+      if (head.x === cheese.x && head.y === cheese.y) {
+        cheeseEaten++;
+        document.getElementById("progress").innerText = `Cheese eaten: ${cheeseEaten}`;
+        playWord();
+        cheese = {x: Math.floor(Math.random() * (canvas.width / gridSize)), y: Math.floor(Math.random() * (canvas.height / gridSize))};
+      } else {
+        mouse.pop();
+      }
+
+      if (head.x < 0 || head.y < 0 || head.x >= canvas.width / gridSize || head.y >= canvas.height / gridSize || mouse.slice(1).some(part => part.x === head.x && part.y === head.y)) {
+        alert("Game Over! Final Score: " + cheeseEaten);
+        document.location.reload();
+      }
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "ArrowUp" && dy === 0) {dx = 0; dy = -1;}
+      if (e.key === "ArrowDown" && dy === 0) {dx = 0; dy = 1;}
+      if (e.key === "ArrowLeft" && dx === 0) {dx = -1; dy = 0;}
+      if (e.key === "ArrowRight" && dx === 0) {dx = 1; dy = 0;}
+    });
+
+    setInterval(gameLoop, 150);
+
+    // Flashcards
+    const flashcard = document.getElementById("flashcard");
+    let currentWord = frenchWords[0];
+    let showFrench = true;
+    function loadFlashcard() {
+      currentWord = frenchWords[Math.floor(Math.random() * frenchWords.length)];
+      showFrench = true;
+      flashcard.innerText = currentWord.fr;
+    }
+    flashcard.addEventListener("click", () => {
+      if (showFrench) {
+        flashcard.innerText = currentWord.en;
+      } else {
+        loadFlashcard();
+      }
+      showFrench = !showFrench;
+    });
+    loadFlashcard();
+
+    // Quiz
+    const quizQuestion = document.getElementById("quiz-question");
+    const quizOptions = document.getElementById("quiz-options");
+    const quizFeedback = document.getElementById("quiz-feedback");
+
+    function loadQuiz() {
+      const word = frenchWords[Math.floor(Math.random() * frenchWords.length)];
+      quizQuestion.innerText = `What does \"${word.fr}\" mean?`;
+      quizOptions.innerHTML = "";
+      quizFeedback.innerText = "";
+
+      let options = [word.en];
+      while (options.length < 4) {
+        const option = frenchWords[Math.floor(Math.random() * frenchWords.length)].en;
+        if (!options.includes(option)) options.push(option);
+      }
+      options.sort(() => Math.random() - 0.5);
+
+      options.forEach(opt => {
+        const btn = document.createElement("div");
+        btn.className = "quiz-option";
+        btn.innerText = opt;
+        btn.onclick = () => {
+          if (opt === word.en) {
+            quizFeedback.innerText = "✅ Correct!";
+          } else {
+            quizFeedback.innerText = `❌ Incorrect. The correct answer is ${word.en}`;
+          }
+          setTimeout(loadQuiz, 2000);
+        };
+        quizOptions.appendChild(btn);
+      });
+    }
+    loadQuiz();
+  </script>
+</body>
+</html>
